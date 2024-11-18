@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Primarily from https://chatgpt.com/share/673ab1f5-5794-8009-83b6-a96bc289f88d -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercise Counter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar for configuration */
+        .sidebar {
+            background-color: #f4f4f4;
+            width: 300px;
+            padding: 20px;
+            border-right: 2px solid #ccc;
+            overflow-y: auto;
+        }
+
+        .main {
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            transition: background-color 0.3s;
+        }
+
+        .exercise-name {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .counter {
+            font-size: 2rem;
+            margin: 20px;
+        }
+
+        .completed-sets {
+            font-size: 4rem;
+            margin-top: 20px;
+        }
+
+        .light-total {
+            color: #555;
+        }
+
+        .alert {
+            padding: 20px;
+            margin: 20px auto;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            width: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .config-group {
+            margin-bottom: 20px;
+        }
+
+        .config-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .config-group input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+        }
+
+        .config-group button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .config-group button.delete {
+            background-color: #dc3545;
+        }
+
+        .config-group button:hover {
+            opacity: 0.8;
+        }
+
+        .control-buttons {
+            margin-top: 20px;
+        }
+
+        .control-buttons button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .control-buttons button.play {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .control-buttons button.pause {
+            background-color: #ffc107;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar for configuration -->
+    <div class="sidebar">
+        <h2>Exercise Config</h2>
+        <div id="exerciseList">
+            <!-- Placeholder for dynamically added exercises -->
+        </div>
+        <button onclick="addExercise()">Add Exercise</button>
+        <button id="beginButton" onclick="beginExercises()" style="margin-top: 20px; display: none;">Begin</button>
+    </div>
+
+    <!-- Main display -->
+    <div class="main" id="mainArea">
+        <div class="exercise-name" id="exerciseName">No Exercises Added</div>
+        <div class="counter">Current Rep: <strong><span id="currentRep">0</span></strong><span> /</span> <span
+                class="light-total" id="totalReps">0</span></div>
+        <div class="completed-sets">Completed Sets: <strong><span id="completedSets">0</span></strong><span> /</span>
+            <span class="light-total" id="totalSets">0</span></div>
+        <div class="control-buttons">
+            <button class="play" id="playButton" onclick="togglePlayPause()" disabled>Play</button>
+            <button class="pause" id="pauseButton" onclick="togglePlayPause()" disabled>Pause</button>
+        </div>
+    </div>
+
+    <script>
+        let exercises = [];
+        let currentExerciseIndex = 0;
+        let currentRep = 0;
+        let completedSets = 0;
+        let isRunning = false;
+        let interval;
+        const colors = ["#add8e6", "#90ee90", "#dabfff", "#afeeee", "#ffb6c1", "#87cefa", "#98fb98", "#d8bfd8", "#ffa07a", "#f0e68c"];
+
+        function addExercise() {
+            const id = `exercise-${Date.now()}`;
+            exercises.push({ id, name: '', sets: 10, reps: 10 });
+            const newExercise = `
+                <div class="config-group" id="${id}">
+                    <label>Exercise Name</label>
+                    <input type="text" value="Exercise ${exercises.length}">
+                    <label>Number of Reps</label>
+                    <input type="number" value="10" min="1">
+                    <label>Number of Sets</label>
+                    <input type="number" value="10" min="1">
+                    <button class="delete" onclick="removeExercise('${id}')">Delete</button>
+                </div>
+            `;
+            document.getElementById('exerciseList').insertAdjacentHTML('beforeend', newExercise);
+            document.getElementById('beginButton').style.display = "block";
+        }
+
+        function removeExercise(id) {
+            document.getElementById(id).remove();
+            exercises = exercises.filter(ex => ex.id !== id);
+            if (exercises.length === 0) {
+                document.getElementById('beginButton').style.display = "none";
+            }
+        }
+
+        function beginExercises() {
+            const configInputs = document.querySelectorAll('#exerciseList .config-group');
+            if (configInputs.length === 0) {
+                alert("Please add at least one exercise before starting!");
+                return;
+            }
+
+            exercises = Array.from(configInputs).map((group, index) => ({
+                id: `exercise-${index}`,
+                name: group.querySelector('input[type="text"]').value || `Exercise ${index + 1}`,
+                reps: parseInt(group.querySelector('input:nth-of-type(2)').value) || 0,
+                sets: parseInt(group.querySelector('input:nth-of-type(3)').value) || 0,
+            }));
+
+            // Validate that all exercises have valid inputs
+            const invalidExercise = exercises.find(ex => ex.sets <= 0 || ex.reps <= 0);
+            if (invalidExercise) {
+                alert("Each exercise must have at least 1 set and 1 rep!");
+                return;
+            }
+
+            if (exercises.length > 0) {
+                document.getElementById('playButton').disabled = false;
+                document.getElementById('pauseButton').disabled = false;
+                currentExerciseIndex = 0;
+                loadCurrentExercise();
+            }
+        }
+
+
+        function loadCurrentExercise() {
+            const exercise = exercises[currentExerciseIndex];
+            document.getElementById('exerciseName').textContent = exercise.name;
+            document.getElementById('currentRep').textContent = 0;
+            document.getElementById('completedSets').textContent = 0;
+            document.getElementById('totalReps').textContent = exercise.reps;
+            document.getElementById('totalSets').textContent = exercise.sets;
+            currentRep = 0;
+            completedSets = 0;
+            document.getElementById('mainArea').style.backgroundColor = colors[0];
+        }
+
+        function togglePlayPause() {
+            isRunning = !isRunning;
+            if (isRunning) {
+                interval = setInterval(updateCounts, 1000);
+            } else {
+                clearInterval(interval);
+            }
+        }
+
+        function updateCounts() {
+            const exercise = exercises[currentExerciseIndex];
+            if (!exercise) return;
+
+            currentRep++;
+            document.getElementById('currentRep').textContent = currentRep;
+
+            if (currentRep === exercise.reps) {
+                completedSets++;
+                currentRep = 0;
+                document.getElementById('completedSets').textContent = completedSets;
+                const colorIndex = completedSets % colors.length;
+                document.getElementById('mainArea').style.backgroundColor = colors[colorIndex];
+                playBellSound();
+
+                if (completedSets === exercise.sets) {
+                    isRunning = false;
+                    clearInterval(interval);
+                    currentExerciseIndex++;
+                    if (currentExerciseIndex < exercises.length) {
+                        loadCurrentExercise();
+                    } else {
+                        document.getElementById('exerciseName').textContent = "All Exercises Complete!";
+                    }
+                }
+            }
+        }
+
+        function playBellSound() {
+            // https://jsfiddle.net/7EAgz/
+            const audio = new Audio("data:audio/wav;base64,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qJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=");
+            // From ChatGPT, doesn't work
+            // const audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
+            audio.play();
+        }
+    </script>
+</body>
+
+</html>
