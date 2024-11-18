@@ -288,6 +288,10 @@
             color: white;
         }
 
+        .completed {
+            font-size: 4rem;
+        }
+
         /* Pulsing effect for Play button */
         .pulse {
             animation: pulse 1.5s infinite;
@@ -489,8 +493,10 @@
                     currentExerciseIndex++;
                     if (currentExerciseIndex < exercises.length) {
                         loadCurrentExercise();
+                        togglePlayPause();
                     } else {
                         document.getElementById('exerciseName').textContent = "All Exercises Complete!";
+                        document.querySelector('.control-buttons').innerHTML = '<span class="completed">🎉🎉🎉</span>'
                     }
                 }
             }
