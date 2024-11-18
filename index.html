@@ -18,7 +18,7 @@
 
         /* Sidebar for configuration */
         .sidebar {
-            position: absolute;
+            position: fixed;
             height: 100vh;
             background-color: #f4f4f4;
             width: 300px;
@@ -26,7 +26,7 @@
             border-right: 2px solid #ccc;
             overflow-y: auto;
             transition: transform 0.5s ease;
-            z-index: 100;
+            z-index: 20;
         }
 
         .main {
@@ -46,7 +46,7 @@
             width: 50px;
             background: #ddd;
             color: #222;
-            z-index: 101;
+            z-index: 51;
             padding: 10px 15px;
             font-size: 1rem;
             font-weight: bold;
@@ -55,6 +55,18 @@
             cursor: pointer;
             text-align: center;
             transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .hamburger-btn-background {
+            position: fixed;
+            height: 70px;
+            left: 0;
+            top: 0;
+            background-color: #f4f4f4;
+            transform: translate(-340px);
+            width: 340px;
+            transition: transform 0.5s ease;
+            z-index: 50;
         }
 
         button.hamburger-btn:hover {
@@ -68,16 +80,23 @@
                 display: block;
             }
 
+            .hamburger-btn-background {
+                transform: translate(0);
+            }
+            body.mobile-collapsed .hamburger-btn-background {
+                transform: translate(-340px);
+            }
+
             .sidebar {
                 transform: translate(0);
             }
 
-            .sidebar.mobile-collapsed {
+            body.mobile-collapsed .sidebar {
                 transform: translate(-340px);
             }
 
             .sidebar-title {
-                margin-top: 80px;
+                margin-top: 75px;
             }
 
             .main {
@@ -88,6 +107,7 @@
         .sidebar-interactive-section {
             position: relative;
         }
+
         .sidebar-interactive-section-cover {
             position: absolute;
             height: 100%;
@@ -96,6 +116,7 @@
             opacity: 0.8;
             display: none;
         }
+
         .sidebar-interactive-section-cover.active {
             display: block;
         }
@@ -146,6 +167,7 @@
             background-color: #c53f3f;
             display: none;
         }
+
         .sidebar button#resetButton.active {
             display: block;
         }
@@ -156,6 +178,10 @@
 
         .sidebar button#resetButton:active {
             background-color: #7a2b2b;
+        }
+
+        .sidebar .sidebar-buffer-space {
+            padding: 80px 0;
         }
 
         .exercise-name {
@@ -307,8 +333,9 @@
     <button class="hamburger-btn" onclick="toggleMobileSidebar()">
         <i class="fas fa-bars"></i>
     </button>
+    <div class="hamburger-btn-background"></div>
     <!-- Sidebar for configuration -->
-    <div class="sidebar">
+    <div class="sidebar">      
         <h2 class="sidebar-title">Exercise Config</h2>
         <div class="sidebar-interactive-section">
             <div class="sidebar-interactive-section-cover"></div>
@@ -319,6 +346,7 @@
             <button id="beginButton" onclick="beginExercises()" style="margin-top: 20px; display: none;">Begin</button>
         </div>
         <button id="resetButton" onclick="reset()">Reset</button>
+        <div class="sidebar-buffer-space"></div>
     </div>
 
     <!-- Main display -->
@@ -485,14 +513,12 @@
         }
 
         function toggleMobileSidebar() {
-            const sidebar = document.querySelector('.sidebar')
-            console.log(sidebar.classList);
-            if (sidebar.classList.contains('mobile-collapsed')) {
-                sidebar.classList.remove('mobile-collapsed')
+            const body = document.querySelector('body')
+            if (body.classList.contains('mobile-collapsed')) {
+                body.classList.remove('mobile-collapsed')
             } else {
-                sidebar.classList.add('mobile-collapsed')
+                body.classList.add('mobile-collapsed')
             }
-            console.log(sidebar.classList);
         }
 
         function reset() {
