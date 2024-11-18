@@ -10,7 +10,6 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex;
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -19,11 +18,86 @@
 
         /* Sidebar for configuration */
         .sidebar {
+            position: absolute;
+            height: 100vh;
             background-color: #f4f4f4;
             width: 300px;
             padding: 20px;
             border-right: 2px solid #ccc;
             overflow-y: auto;
+            transition: transform 0.5s ease;
+            z-index: 100;
+        }
+
+        .main {
+            flex: 1;
+            text-align: center;
+            padding: 20px 20px 20px 360px;
+            transition: background-color 0.3s;
+            height: 100vh;
+        }
+
+
+        button.hamburger-btn {
+            position: fixed;
+            left: 10px;
+            top: 10px;
+            display: none;
+            width: 50px;
+            background: #ddd;
+            color: #222;
+            z-index: 101;
+            padding: 10px 15px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        button.hamburger-btn:hover {
+            width: 50px;
+            background: #bbb;
+            color: #111;
+        }
+
+        @media screen and (max-width: 768px) {
+            button.hamburger-btn {
+                display: block;
+            }
+
+            .sidebar {
+                transform: translate(0);
+            }
+
+            .sidebar.mobile-collapsed {
+                transform: translate(-340px);
+            }
+
+            .sidebar-title {
+                margin-top: 50px;
+            }
+
+            .main {
+                padding: 20px;
+            }
+        }
+
+        .sidebar-interactive-section {
+            position: relative;
+        }
+        .sidebar-interactive-section-cover {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            background-color: #f4f4f4;
+            opacity: 0.8;
+            display: none;
+        }
+        .sidebar-interactive-section-cover.active {
+            display: block;
         }
 
         /* Add Exercise and Begin buttons */
@@ -66,11 +140,22 @@
             background-color: #19692c;
         }
 
-        .main {
-            flex: 1;
-            text-align: center;
-            padding: 20px;
-            transition: background-color 0.3s;
+        /* Styling for Reset button */
+        .sidebar button#resetButton {
+            margin-top: 20px;
+            background-color: #c53f3f;
+            display: none;
+        }
+        .sidebar button#resetButton.active {
+            display: block;
+        }
+
+        .sidebar button#resetButton:hover {
+            background-color: #9e3636;
+        }
+
+        .sidebar button#resetButton:active {
+            background-color: #7a2b2b;
         }
 
         .exercise-name {
@@ -215,21 +300,28 @@
 </head>
 
 <body>
+    <button class="hamburger-btn" onclick="toggleMobileSidebar()">
+        <i class="fas fa-bars"></i>
+    </button>
     <!-- Sidebar for configuration -->
     <div class="sidebar">
-        <h2>Exercise Config</h2>
-        <div id="exerciseList">
-            <!-- Placeholder for dynamically added exercises -->
+        <h2 class="sidebar-title">Exercise Config</h2>
+        <div class="sidebar-interactive-section">
+            <div class="sidebar-interactive-section-cover"></div>
+            <div id="exerciseList">
+                <!-- Placeholder for dynamically added exercises -->
+            </div>
+            <button onclick="addExercise()">Add Exercise</button>
+            <button id="beginButton" onclick="beginExercises()" style="margin-top: 20px; display: none;">Begin</button>
         </div>
-        <button onclick="addExercise()">Add Exercise</button>
-        <button id="beginButton" onclick="beginExercises()" style="margin-top: 20px; display: none;">Begin</button>
+        <button id="resetButton" onclick="reset()">Reset</button>
     </div>
 
     <!-- Main display -->
     <div class="main" id="mainArea">
-        <div class="exercise-name" id="exerciseName">No Exercises Added</div>
-        <div class="counter">Current Rep: <strong><span id="currentRep">0</span></strong><span> /</span> <span
-                class="light-total" id="totalReps">0</span></div>
+        <div class="exercise-name" id="exerciseName">Please add some exercises, then hit "Begin" 💪</div>
+        <div class="counter">Seconds Elapsed: <strong><span id="secondsElapsed">0</span></strong><span> /</span> <span
+                class="light-total" id="totalSeconds">0</span></div>
         <div class="completed-sets">Completed Sets: <strong><span id="completedSets">0</span></strong><span> /</span>
             <span class="light-total" id="totalSets">0</span>
         </div>
@@ -242,7 +334,7 @@
     <script>
         let exercises = [];
         let currentExerciseIndex = 0;
-        let currentRep = 0;
+        let secondsElapsed = 0;
         let completedSets = 0;
         let isRunning = false;
         let interval;
@@ -251,13 +343,13 @@
         function addExercise() {
             const id = `exercise-${Date.now()}`;
             exercises.push({ id, name: '', sets: 10, reps: 10 });
-            
+
             const newExercise = `
                 <div class="config-group" id="${id}">
                     <div>
                         <label>Exercise Name</label>
                         <input type="text" value="Exercise ${exercises.length}">
-                        <label>Number of Reps</label>
+                        <label>Seconds per Set</label>
                         <input type="number" value="10" min="1">
                         <label>Number of Sets</label>
                         <input type="number" value="10" min="1">
@@ -296,16 +388,16 @@
             // Validate that all exercises have valid inputs
             const invalidExercise = exercises.find(ex => ex.sets <= 0 || ex.reps <= 0);
             if (invalidExercise) {
-                alert("Each exercise must have at least 1 set and 1 rep!");
+                alert("Each exercise must have at least 1 set, and a number of seconds per set!");
                 return;
             }
 
             if (exercises.length > 0) {
-                document.getElementById('playButton').disabled = false;
-                document.getElementById('playButton').classList.add('pulse'); // Add pulsing effect
-                document.getElementById('pauseButton').disabled = true;
                 currentExerciseIndex = 0;
                 loadCurrentExercise();
+                togglePlayPause();
+                disableFurtherExerciseEdits();
+                toggleMobileSidebar();
             }
         }
 
@@ -313,11 +405,11 @@
         function loadCurrentExercise() {
             const exercise = exercises[currentExerciseIndex];
             document.getElementById('exerciseName').textContent = exercise.name;
-            document.getElementById('currentRep').textContent = 0;
+            document.getElementById('secondsElapsed').textContent = 0;
             document.getElementById('completedSets').textContent = 0;
-            document.getElementById('totalReps').textContent = exercise.reps;
+            document.getElementById('totalSeconds').textContent = exercise.reps;
             document.getElementById('totalSets').textContent = exercise.sets;
-            currentRep = 0;
+            secondsElapsed = 0;
             completedSets = 0;
             document.getElementById('mainArea').style.backgroundColor = colors[0];
         }
@@ -348,12 +440,12 @@
             const exercise = exercises[currentExerciseIndex];
             if (!exercise) return;
 
-            currentRep++;
-            document.getElementById('currentRep').textContent = currentRep;
+            secondsElapsed++;
+            document.getElementById('secondsElapsed').textContent = secondsElapsed;
 
-            if (currentRep === exercise.reps) {
+            if (secondsElapsed === exercise.reps) {
                 completedSets++;
-                currentRep = 0;
+                secondsElapsed = 0;
                 document.getElementById('completedSets').textContent = completedSets;
                 const colorIndex = completedSets % colors.length;
                 document.getElementById('mainArea').style.backgroundColor = colors[colorIndex];
@@ -379,6 +471,30 @@
             // const audio = new Audio('https://www.soundjay.com/button/beep-07.wav');
             audio.play();
         }
+
+        function disableFurtherExerciseEdits() {
+            const resetButton = document.getElementById('resetButton');
+            const sidebarInteractiveSectionCover = document.querySelector('.sidebar-interactive-section-cover');
+
+            resetButton.classList.add('active');
+            sidebarInteractiveSectionCover.classList.add('active');
+        }
+
+        function toggleMobileSidebar() {
+            const sidebar = document.querySelector('.sidebar')
+            console.log(sidebar.classList);
+            if (sidebar.classList.contains('mobile-collapsed')) {
+                sidebar.classList.remove('mobile-collapsed')
+            } else {
+                sidebar.classList.add('mobile-collapsed')
+            }
+            console.log(sidebar.classList);
+        }
+
+        function reset() {
+            window.location.reload();
+        }
+
     </script>
 </body>
 
